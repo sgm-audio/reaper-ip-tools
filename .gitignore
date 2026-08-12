@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+build/
+dist/
+.pytest_cache/
+
+# Smoke / scratch output
+_smoke/
+
+# Generated maps / assets
+reaper_plugin_map.json
+stock_fx_map.json
+generated_assets/

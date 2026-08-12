@@ -1,0 +1,8 @@
+track_number,track_name,track_type,folder_level,color_hex,fx_chain_ref,routing_note
+1,SHOW_MASTER,bus,0,#FFFFFF,show_master (ReaComp+ReaLimit),Feeds Master; master send enabled
+2,DIALOGUE_BUS,bus,0,#FF5252,dialogue_bus (ReaGate+ReaEQ+ReaComp),Receives speakers; sends to SHOW_MASTER
+3,SPKF_DALE,audio,0,#E85D3F,,Sends to DIALOGUE_BUS
+4,SPKF_JAMIE,audio,0,#3FA7E8,,Sends to DIALOGUE_BUS
+5,SPKF_BRIAN,audio,0,#7ADB62,,Sends to DIALOGUE_BUS
+6,MUSIC_BED,audio,0,#C792EA,,Sends to SHOW_MASTER
+7,SFX_LIB,audio,0,#F4D35E,,Sends to SHOW_MASTER

@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<index version="1" name="Reaper IP Tools">
+  <category name="Utility">
+    <reapack name="Extract REAPER Plugin UUID Map to JSON.lua" type="script" desc="Extract REAPER Plugin UUID Map to JSON">
+      <version name="1.0.0" author="Scott Mills" time="2026-08-12T00:00:00">
+        <source file="extract_reaper_uuids.lua" type="script" main="main">extract_reaper_uuids.lua</source>
+        <changelog>Initial release</changelog>
+      </version>
+    </reapack>
+    <reapack name="Generate REAPER Session Assets (RPP + EEL).lua" type="script" desc="Generate REAPER Session Assets (RPP + EEL)">
+      <version name="1.0.0" author="Scott Mills" time="2026-08-12T00:00:00">
+        <source file="generate_reaper_assets.lua" type="script" main="main">generate_reaper_assets.lua</source>
+        <changelog>Initial release</changelog>
+      </version>
+    </reapack>
+    <reapack name="Generate Plugin Map Lua Module.lua" type="script" desc="Generate Plugin Map Lua Module">
+      <version name="1.0.0" author="Scott Mills" time="2026-08-12T00:00:00">
+        <source file="plugin_map_generator.lua" type="script" main="main">plugin_map_generator.lua</source>
+        <changelog>Initial release</changelog>
+      </version>
+    </reapack>
+    <reapack name="Insert FX by Name from Plugin Map.lua" type="script" desc="Insert FX by Name from Plugin Map">
+      <version name="1.0.0" author="Scott Mills" time="2026-08-12T00:00:00">
+        <source file="fx_inserter.lua" type="script" main="main">fx_inserter.lua</source>
+        <changelog>Initial release</changelog>
+      </version>
+    </reapack>
+    <reapack name="Generate Full Session Template (RPP).lua" type="script" desc="Generate Full Session Template (RPP)">
+      <version name="1.0.0" author="Scott Mills" time="2026-08-12T00:00:00">
+        <source file="session_generator.lua" type="script" main="main">session_generator.lua</source>
+        <changelog>Initial release</changelog>
+      </version>
+    </reapack>
+  </category>
+</index>

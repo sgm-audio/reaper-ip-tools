@@ -1,0 +1,8 @@
+<REAPER_PROJECT 0.1 "7.0/win64" 1786492800
+  <NOTES 0 2
+    |Podcast Session Template - reaper-session-architect
+    |Tracks, buses, routing, colors, markers and stock FX are built by bootstrap.lua.
+    |Open this project, then run bootstrap.lua from the Actions list to materialize the template.
+    |Target: -16 LUFS integrated, 48 kHz, 24-bit WAV.
+  >
+>
