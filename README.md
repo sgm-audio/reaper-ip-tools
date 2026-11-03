@@ -1,8 +1,9 @@
 # reaper-assets
 
-Emit **canonical, valid REAPER `.rpp` session templates** programmatically, and
-package them with documentation. Chunk formats are verified against REAPER's
-own output (the user's installed Project Templates) — nothing is fabricated.
+Python package (`reaper-assets`, in this `reaper-ip-tools` repo) that writes REAPER
+`.rpp` session templates and matching docs. Stock FX chunks were copied from
+REAPER-saved projects; three of those are kept in `tests/fixtures/` and the
+tests compare against them. No third-party dependencies (Python ≥ 3.9).
 
 ## Install
 
@@ -69,6 +70,20 @@ Companion scripts:
 - `extract_reaper_uuids.py` / `.lua` — dump plugin `name -> uid` from REAPER's ini.
 - `extract_stock_fx.py` — re-extract stock FX state from Project Templates.
 
+ReaScripts (Lua, run inside REAPER; not covered by the Python tests):
+- `extract_reaper_uuids.lua`, `plugin_map_generator.lua`, `fx_inserter.lua`,
+  `generate_reaper_assets.lua`, `session_generator.lua`, `rpp_helpers.lua` (library)
+- `podcast_template/` — a pre-generated podcast session (`template.RPP`,
+  `bootstrap.lua`, docs).
+- `index.xml` lists the scripts for ReaPack, but its `<source>` entries are
+  bare file names, not URLs, so ReaPack cannot install from it as is.
+
+## Tests
+
+`uv run pytest` — 45 passed (checked 2026-10-31, Linux, Python 3.12). All CLI
+commands above were run on that date; `validate --round-trip` prints `[SKIP]`
+and exits 0 when no REAPER executable is found.
+
 ## Notes / limitations
 
 - **Third-party plugin state** is not reproducible from `reaper-vstplugins64.ini`
@@ -78,3 +93,7 @@ Companion scripts:
   are not emitted.
 - **REAPER round-trip** is opt-in and requires a REAPER install; it renders the
   project headlessly and treats a clean exit as proof of successful parsing.
+
+## Licence
+
+`pyproject.toml` declares MIT, but the repository has no `LICENSE` file yet.
