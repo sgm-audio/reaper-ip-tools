@@ -96,4 +96,4 @@ and exits 0 when no REAPER executable is found.
 
 ## Licence
 
-`pyproject.toml` declares MIT, but the repository has no `LICENSE` file yet.
+MIT. See [LICENSE](LICENSE).
