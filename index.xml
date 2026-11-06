@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<index version="1" name="SGM ReaScripts" commit="254fb854c35787e1e6913d6aab489eb9556f30d5">
+<index version="1" name="SGM ReaScripts" commit="8e1e1af9caa511ab2536c0e28e338b3f0c3529d3">
   <category name="Various">
     <reapack name="SGM_Extract REAPER Plugin UUID Map to JSON.lua" type="script" desc="Extract REAPER Plugin UUID Map to JSON">
       <metadata>
@@ -34,8 +34,8 @@
       </metadata>
       <version name="1.0.0" author="Scott Mills" time="2026-11-06T16:54:24Z">
         <changelog><![CDATA[Initial ReaPack release]]></changelog>
-        <source main="main">https://github.com/sgm-audio/reaper-ip-tools/raw/254fb854c35787e1e6913d6aab489eb9556f30d5/Various/SGM_Generate%20Full%20Session%20Template%20(RPP).lua</source>
-        <source file="rpp_helpers.lua">https://github.com/sgm-audio/reaper-ip-tools/raw/254fb854c35787e1e6913d6aab489eb9556f30d5/Various/rpp_helpers.lua</source>
+        <source main="main">https://github.com/sgm-audio/reaper-ip-tools/raw/8e1e1af9caa511ab2536c0e28e338b3f0c3529d3/Various/SGM_Generate%20Full%20Session%20Template%20(RPP).lua</source>
+        <source file="rpp_helpers.lua">https://github.com/sgm-audio/reaper-ip-tools/raw/8e1e1af9caa511ab2536c0e28e338b3f0c3529d3/Various/rpp_helpers.lua</source>
       </version>
     </reapack>
     <reapack name="SGM_Generate Plugin Map Lua Module.lua" type="script" desc="Generate Plugin Map Lua Module">
@@ -70,7 +70,7 @@
       </metadata>
       <version name="1.0.0" author="Scott Mills" time="2026-11-06T16:54:24Z">
         <changelog><![CDATA[Initial ReaPack release]]></changelog>
-        <source main="main">https://github.com/sgm-audio/reaper-ip-tools/raw/254fb854c35787e1e6913d6aab489eb9556f30d5/Various/SGM_Generate%20REAPER%20Session%20Assets%20(RPP%20+%20EEL).lua</source>
+        <source main="main">https://github.com/sgm-audio/reaper-ip-tools/raw/8e1e1af9caa511ab2536c0e28e338b3f0c3529d3/Various/SGM_Generate%20REAPER%20Session%20Assets%20(RPP%20+%20EEL).lua</source>
       </version>
     </reapack>
     <reapack name="SGM_Insert FX by Name from Plugin Map.lua" type="script" desc="Insert FX by Name from Plugin Map">
