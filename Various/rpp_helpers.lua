@@ -1,6 +1,7 @@
 -- rpp_helpers.lua — pure library for canonical REAPER .rpp chunk emission.
 -- Formats verified against REAPER 7.x output (see src/reaper_assets/*.py).
 -- No reaper.* calls, no side effects. dofile() to use.
+-- @noindex
 
 local helpers = {}
 
