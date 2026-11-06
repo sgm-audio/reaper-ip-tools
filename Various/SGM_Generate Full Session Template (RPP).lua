@@ -26,7 +26,11 @@ local CONFIG = {
 local SEP = package.config:sub(1, 1)
 
 local function script_directory()
-    local path = reaper.get_script_path()
+    local info = debug.getinfo(1, "S")
+    local path = info and info.source
+    if path and path:sub(1, 1) == "@" then
+        path = path:sub(2)
+    end
     if not path or path == "" then
         return reaper.GetResourcePath()
     end
