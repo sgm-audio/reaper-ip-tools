@@ -1,11 +1,16 @@
 -- @description Generate REAPER Session Assets (RPP + EEL)
 -- @author Scott Mills
 -- @version 1.0.0
--- @about Builds a valid auto_session_v1.rpp and clean_slate_reset.eel into a generated_assets folder using a strict, balanced-node builder
--- @changelog Initial release
--- @link https://github.com/sgm-audio
+-- @changelog
+--   Initial ReaPack release
 -- @provides
 --   [main] .
+-- @link https://github.com/sgm-audio
+-- @about
+--   # Generate REAPER Session Assets (RPP + EEL)
+--   Builds a valid auto_session_v1.rpp and clean_slate_reset.eel into a
+--   generated_assets folder next to the script, using a strict, balanced-node
+--   builder (unbalanced chunks are impossible by construction).
 
 local CONFIG = {
     output_dir_name = "generated_assets",

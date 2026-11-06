@@ -1,11 +1,21 @@
 -- @description Generate Full Session Template (RPP)
 -- @author Scott Mills
 -- @version 1.0.0
--- @about Builds a session RPP with a drum folder, instrument children, a reverb bus, sends, track colors and markers, using verified REAPER 7.x chunk formats
--- @changelog Initial release
--- @link https://github.com/sgm-audio
+-- @changelog
+--   Initial ReaPack release
 -- @provides
 --   [main] .
+--   rpp_helpers.lua
+-- @link https://github.com/sgm-audio
+-- @about
+--   # Generate Full Session Template (RPP)
+--   Builds a session RPP with a drum folder, instrument children, a reverb
+--   bus, sends, track colors and markers, using REAPER 7.x chunk formats.
+--   Writes auto_session_v2.rpp and an APPLY_FX_HERE.md note into a
+--   generated_assets folder next to the script. FX are applied at runtime —
+--   no fabricated binary presets.
+--
+--   Requires rpp_helpers.lua, which ReaPack installs alongside this script.
 
 local CONFIG = {
     output_dir_name = "generated_assets",
@@ -129,7 +139,7 @@ local function main()
 This RPP is generated with routing, folders, colors and markers only.
 FX are applied at runtime (no fabricated binary presets) — run:
 
-  * fx_inserter.lua  (inserts a named plugin from plugin_map.lua onto selected tracks)
+  * SGM_Insert FX by Name from Plugin Map.lua  (inserts a named plugin from plugin_map.lua onto selected tracks)
   * or add stock Cockos FX via the track FX chain UI.
 
 To use stock chains programmatically, see src/reaper_assets/fx.py

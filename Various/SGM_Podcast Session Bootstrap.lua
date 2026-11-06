@@ -1,10 +1,20 @@
--- @description Podcast Session Bootstrap (reaper-session-architect)
+-- @description Podcast Session Bootstrap
 -- @author Scott Mills
 -- @version 1.0.0
--- @changelog Builds a podcast session: speaker tracks, music bed, SFX, dialogue + show buses,
---   routing, colors, markers/regions, and stock FX chains. Idempotent with dry-run mode.
+-- @changelog
+--   Initial ReaPack release
 -- @provides
---   [main] . -> bootstrap.lua
+--   [main] .
+-- @link https://github.com/sgm-audio
+-- @about
+--   # Podcast Session Bootstrap
+--   Builds a podcast session: speaker tracks, music bed, SFX, dialogue +
+--   show buses, routing, colors, markers/regions, and stock Cockos FX chains
+--   (ReaComp, ReaLimit, ReaGate, ReaEQ — added by name, no binary presets).
+--
+--   Idempotent: existing tracks/sends/markers are reused, not duplicated.
+--   Set CONFIG.dry_run = true at the top of the script to preview every
+--   planned action without touching the project.
 
 -- ============================================================
 -- USER SETTINGS
@@ -118,7 +128,9 @@ local function ensure_tracks()
                 log("[DRY RUN] Would create track: " .. spec.name)
                 tr = nil
             else
-                tr = reaper.InsertTrackAtIndex(reaper.CountTracks(0), true)
+                local idx = reaper.CountTracks(0)
+                reaper.InsertTrackAtIndex(idx, true)
+                tr = reaper.GetTrack(0, idx)
                 set_track_name(tr, spec.name)
                 log("Created track: " .. spec.name)
             end
@@ -200,22 +212,28 @@ end
 local function main()
     if CONFIG.dry_run then
         log("=== PODCAST SESSION BOOTSTRAP (DRY RUN) ===")
+        ensure_project_settings()
+        local track_refs = ensure_tracks()
+        ensure_routes(track_refs)
+        ensure_markers_regions()
     else
         reaper.Undo_BeginBlock()
         reaper.PreventUIRefresh(1)
-        log("=== PODCAST SESSION BOOTSTRAP ===")
-    end
-
-    ensure_project_settings()
-    local track_refs = ensure_tracks()
-    ensure_routes(track_refs)
-    ensure_markers_regions()
-
-    if not CONFIG.dry_run then
+        local ok, err = pcall(function()
+            ensure_project_settings()
+            local track_refs = ensure_tracks()
+            ensure_routes(track_refs)
+            ensure_markers_regions()
+        end)
+        -- Undo/PreventUIRefresh are closed on ALL paths, including errors.
         reaper.PreventUIRefresh(-1)
         reaper.Undo_EndBlock("Build Podcast Session", -1)
-        reaper.TrackList_AdjustWindows(false)
-        reaper.UpdateArrange()
+        if not ok then
+            reaper.ShowConsoleMsg("Bootstrap failed: " .. tostring(err) .. "\n")
+        else
+            reaper.TrackList_AdjustWindows(false)
+            reaper.UpdateArrange()
+        end
     end
 
     log("Done. Dialogue target: -16 LUFS integrated, 48 kHz / 24-bit WAV.")

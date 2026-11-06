@@ -1,11 +1,18 @@
 -- @description Insert FX by Name from Plugin Map
 -- @author Scott Mills
 -- @version 1.0.0
--- @about Prompts for a plugin name (from plugin_map.lua) and inserts it onto all selected tracks. Run plugin_map_generator.lua first to build the map.
--- @changelog Initial release
--- @link https://github.com/sgm-audio
+-- @changelog
+--   Initial ReaPack release
 -- @provides
 --   [main] .
+-- @link https://github.com/sgm-audio
+-- @about
+--   # Insert FX by Name from Plugin Map
+--   Prompts for a plugin name (from plugin_map.lua) and inserts it onto all
+--   selected tracks. Requires a partial/fuzzy name match; shows a sample of
+--   available plugins when nothing matches.
+--
+--   Run SGM_Generate Plugin Map Lua Module.lua first to build the map.
 
 local SEP = package.config:sub(1, 1)
 
@@ -44,7 +51,7 @@ local function main()
 
     local f = io.open(map_path, "r")
     if not f then
-        reaper.MB("Plugin map not found at:\n" .. map_path .. "\n\nRun plugin_map_generator.lua first.", "Insert FX", 0)
+        reaper.MB("Plugin map not found at:\n" .. map_path .. "\n\nRun SGM_Generate Plugin Map Lua Module.lua first.", "Insert FX", 0)
         return
     end
     f:close()
@@ -61,8 +68,7 @@ local function main()
         return
     end
 
-    local retval_csv = ""
-    local ok_input, input_csv = reaper.GetUserInputs("Insert FX by name", 1, "Plugin name", retval_csv, 0)
+    local ok_input, input_csv = reaper.GetUserInputs("Insert FX by name", 1, "Plugin name", "")
     if not ok_input then
         return
     end
