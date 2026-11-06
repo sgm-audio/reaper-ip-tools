@@ -141,16 +141,11 @@ local function write_file(path, content)
 end
 
 local function script_directory()
-    local info = debug.getinfo(1, "S")
-    local path = info and info.source
-    if path and path:sub(1, 1) == "@" then
-        path = path:sub(2)
-    end
+    local path = reaper.GetScriptPath()
     if not path or path == "" then
         return reaper.GetResourcePath()
     end
-    -- get_script_path() may return the full path to the .lua file rather than
-    -- its directory, so strip a trailing filename component if one is present.
+    -- GetScriptPath() returns the full path to the .lua file; strip to directory.
     if path:match("%.[%w]+$") then
         local dir = path:match("^(.*)[/\\]")
         if dir and dir ~= "" then
