@@ -9,10 +9,14 @@ def get_reaper_resource_path():
     """
     system = platform.system()
     if system == "Windows":
-        # Standard portable or installed path
-        path = os.path.join(os.environ["APPDATA"], "REAPER")
-        if os.path.exists(path):
-            return path
+        # Standard portable or installed path (APPDATA may be unset in some
+        # environments -- fall back through to the user prompt rather than
+        # raising KeyError).
+        appdata = os.environ.get("APPDATA")
+        if appdata:
+            path = os.path.join(appdata, "REAPER")
+            if os.path.exists(path):
+                return path
     elif system == "Darwin":  # Mac
         path = os.path.expanduser("~/Library/Application Support/REAPER")
         if os.path.exists(path):
@@ -64,8 +68,8 @@ def parse_reaper_ini(ini_path):
             # The name is the last part(s). Re-join just in case name has commas.
             name = ",".join(parts[2:])
 
-            # Clean up the name (remove quotes if present)
-            name = name.strip()
+            # Clean up the name (remove surrounding quotes if present)
+            name = name.strip().strip('"')
 
             # Detect Type based on extension
             p_type = "VST"

@@ -54,3 +54,11 @@ def test_write_project_to_file(tmp_path):
     assert out.exists()
     assert validate.validate_rpp_file(str(out)) == []
     assert text.startswith("<REAPER_PROJECT")
+
+
+def test_metronome_matches_reaper_ground_truth():
+    # REAPER-saved projects write <METRONOME 6 2>; the emitter must match.
+    text = project.generate_rpp_string(catalog.get_template("podcast"))
+    # REAPER writes the node open line without a trailing '>' on the same
+    # line (children follow, then a separate '>').
+    assert any(line.strip() == "<METRONOME 6 2" for line in text.splitlines())

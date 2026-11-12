@@ -88,7 +88,9 @@ def write_settings(b, sample_rate=48000, bpm=120, time_sig=(4, 4), notes=None):
     b.close()
     b.prop("LOCK", 1)
 
-    b.open("METRONOME", 6, 0)
+    b.open(
+        "METRONOME", 6, 2
+    )  # second field matches REAPER-saved projects (ground truth)
     b.prop("VOL", 0.25, 0.125)
     b.prop("BEATLEN", 4)
     b.prop("FREQ", 800, 1600, 1)
