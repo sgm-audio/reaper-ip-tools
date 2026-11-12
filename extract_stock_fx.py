@@ -14,7 +14,11 @@ import re
 import sys
 
 _VST_RE = re.compile(r'<VST "([^"]+)" (\S+) 0 "([^"]*)" (\d+)<([0-9A-Fa-f]+)> ""')
-_STATE_START = re.compile(r"^\s*[A-Za-z0-9+/=]{40,}\s*$")
+# Lines inside a <VST> node that are not part of the plugin state blob.
+# REAPER writes FLOAT/FLOATPOS/FXID/WAK/BYPASS around the state; the
+# hardcoded descriptors in reaper_assets.fx store only the base64 state
+# lines, so the extractor skips these to stay consistent with that shape.
+_NON_STATE_PREFIXES = ("FLOAT ", "FLOATPOS ", "FXID ", "WAK ", "BYPASS ")
 
 
 def extract_stock_fx(templates_dir):
@@ -40,7 +44,11 @@ def extract_stock_fx(templates_dir):
                 stripped = lines[j].strip()
                 if stripped == ">":
                     break
-                if stripped and not stripped.startswith("<"):
+                if (
+                    stripped
+                    and not stripped.startswith("<")
+                    and not stripped.startswith(_NON_STATE_PREFIXES)
+                ):
                     state.append(lines[j].rstrip())
                 j += 1
             short = display.replace("VST: ", "").replace(" (Cockos)", "")

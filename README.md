@@ -71,12 +71,18 @@ Companion scripts:
 - `extract_stock_fx.py` — re-extract stock FX state from Project Templates.
 
 ReaScripts (Lua, run inside REAPER; not covered by the Python tests):
-- `extract_reaper_uuids.lua`, `plugin_map_generator.lua`, `fx_inserter.lua`,
-  `generate_reaper_assets.lua`, `session_generator.lua`, `rpp_helpers.lua` (library)
-- `podcast_template/` — a pre-generated podcast session (`template.RPP`,
-  `bootstrap.lua`, docs).
-- `index.xml` lists the scripts for ReaPack, but its `<source>` entries are
-  bare file names, not URLs, so ReaPack cannot install from it as is.
+**None shipped in this release.** The Lua ReaScripts
+(`extract_reaper_uuids.lua`, `plugin_map_generator.lua`, `fx_inserter.lua`,
+`generate_reaper_assets.lua`, `session_generator.lua`, `rpp_helpers.lua` and
+`podcast_template/bootstrap.lua`) plus `index.xml` were removed so the ReaPack
+feed 404s (see commit d94f85a). The repo therefore cannot be installed via
+ReaPack as documented, and `podcast_template/template.RPP` is a stub that
+awaits `bootstrap.lua` to materialize it.
+
+The one REAPER-targeted script that *is* shipped is the EEL2 asset emitted by
+`generate_reaper_assets.py` (`clean_slate_reset.eel`); its API calls are
+verified against the official ReaScript/EEL2 API in QA (see AUDIT_REPORT.md),
+but it is not execution-tested (no REAPER install in CI).
 
 ## Tests
 
