@@ -13,12 +13,22 @@ def _cmd_generate(args):
         try:
             with open(args.spec, "r", encoding="utf-8") as f:
                 spec = json.load(f)
-        except (OSError, json.JSONDecodeError) as e:
+        except (OSError, UnicodeDecodeError, json.JSONDecodeError) as e:
             print(f"[FATAL] could not read spec {args.spec!r}: {e}", file=sys.stderr)
+            return 1
+        if not isinstance(spec, dict):
+            print(
+                f"[FATAL] spec {args.spec!r} must be a JSON object, got {type(spec).__name__}",
+                file=sys.stderr,
+            )
             return 1
         default_name = os.path.splitext(os.path.basename(args.spec))[0]
     elif args.template:
-        spec = catalog.get_template(args.template)
+        try:
+            spec = catalog.get_template(args.template)
+        except KeyError as e:
+            print(f"[FATAL] {e}", file=sys.stderr)
+            return 1
         default_name = args.template
     else:
         print("[FATAL] provide --template <name> or --spec <file>", file=sys.stderr)
@@ -26,15 +36,26 @@ def _cmd_generate(args):
 
     name = args.name or default_name
     out_dir = args.out or name
-    os.makedirs(out_dir, exist_ok=True)
     rpp_path = os.path.join(out_dir, f"{name}.rpp")
 
-    text = project.generate_rpp_project(rpp_path, spec)
-    docsgen.generate_docs(spec, out_dir, name=name)
+    try:
+        text = project.generate_rpp_string(spec)
+    except (KeyError, ValueError, TypeError) as e:
+        print(f"[FATAL] invalid project spec: {e}", file=sys.stderr)
+        return 1
 
     errors = validate.validate_rpp(text)
     if errors:
         print(f"[FATAL] generated RPP failed validation: {errors}", file=sys.stderr)
+        return 1
+
+    try:
+        os.makedirs(out_dir, exist_ok=True)
+        with open(rpp_path, "w", encoding="utf-8") as f:
+            f.write(text)
+        docsgen.generate_docs(spec, out_dir, name=name)
+    except (OSError, KeyError, ValueError, TypeError) as e:
+        print(f"[FATAL] failed to write output: {e}", file=sys.stderr)
         return 1
 
     print(f"[OK] wrote {rpp_path}")
@@ -50,15 +71,27 @@ def _cmd_templates(args):
 
 def _cmd_merge(args):
     specs = [{"name": t} for t in args.track]
-    merged = merge.merge_tracks_file(args.rpp, specs)
-    print(f"[OK] merged {len(args.track)} track(s) into {args.rpp}")
+    try:
+        with open(args.rpp, "r", encoding="utf-8") as f:
+            before_count = len(merge.existing_track_names(f.read()))
+        merged = merge.merge_tracks_file(args.rpp, specs)
+    except (OSError, UnicodeDecodeError, KeyError, ValueError) as e:
+        print(f"[FATAL] failed to merge into {args.rpp!r}: {e}", file=sys.stderr)
+        return 1
+    after_count = len(merge.existing_track_names(merged))
+    added = after_count - before_count
+    print(f"[OK] merged {added} track(s) into {args.rpp}")
     if args.verbose:
-        print(f"[INFO] {len(merge.existing_track_names(merged))} tracks total")
+        print(f"[INFO] {after_count} tracks total")
     return 0
 
 
 def _cmd_validate(args):
-    errors = validate.validate_rpp_file(args.rpp)
+    try:
+        errors = validate.validate_rpp_file(args.rpp)
+    except (OSError, UnicodeDecodeError) as e:
+        print(f"[FATAL] could not read {args.rpp!r}: {e}", file=sys.stderr)
+        return 1
     if errors:
         print("[FAIL] structural validation:", file=sys.stderr)
         for e in errors:
@@ -79,11 +112,20 @@ def _cmd_validate(args):
 
 
 def _cmd_check_plugins(args):
-    spec = catalog.get_template(args.template)
-    resolver = fx.PluginResolver(args.map)
+    try:
+        spec = catalog.get_template(args.template)
+    except KeyError as e:
+        print(f"[FATAL] {e}", file=sys.stderr)
+        return 1
+    try:
+        resolver = fx.PluginResolver(args.map, strict=bool(args.map))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError, ValueError) as e:
+        print(f"[FATAL] could not load plugin map {args.map!r}: {e}", file=sys.stderr)
+        return 1
     all_fx = []
     for t in spec.get("tracks", []):
-        all_fx.extend(t.get("fx", []))
+        if isinstance(t, dict):
+            all_fx.extend(t.get("fx") or [])
     unknown = resolver.missing(all_fx)
     if unknown:
         print(f"[WARN] plugins not resolvable (not stock, not in map): {unknown}")
@@ -101,8 +143,9 @@ def build_parser():
     sub = p.add_subparsers(dest="command", required=True)
 
     g = sub.add_parser("generate", help="generate a session template")
-    g.add_argument("--template", help="named template (see 'templates')")
-    g.add_argument("--spec", help="path to a JSON project spec")
+    src = g.add_mutually_exclusive_group(required=False)
+    src.add_argument("--template", help="named template (see 'templates')")
+    src.add_argument("--spec", help="path to a JSON project spec")
     g.add_argument("-o", "--out", help="output directory")
     g.add_argument("--name", help="output base name (defaults to template/spec name)")
     g.set_defaults(func=_cmd_generate)

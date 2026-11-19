@@ -12,7 +12,7 @@ validated, canonical emitter.
 import os
 import sys
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "src"))
 
 from reaper_assets import catalog, generate_rpp_project, validate
 
@@ -23,16 +23,23 @@ EEL_SCRIPT = r"""
 
 function main()
 (
-    Undo_BeginBlock();
     count = CountTracks(0);
-    i = 0;
-    loop(count,
-        tr = GetTrack(0, i);
-        SetMediaTrackInfo_Value(tr, "D_VOL", 1.0); // Reset to 0dB (linear gain 1.0)
-        SetMediaTrackInfo_Value(tr, "D_PAN", 0.0); // Center pan
-        i += 1;
+    count > 0 ? (
+        Undo_BeginBlock();
+        PreventUIRefresh(1);
+        i = 0;
+        loop(count,
+            tr = GetTrack(0, i);
+            tr ? (
+                SetMediaTrackInfo_Value(tr, "D_VOL", 1.0); // Reset to 0dB (linear gain 1.0)
+                SetMediaTrackInfo_Value(tr, "D_PAN", 0.0); // Center pan
+            );
+            i += 1;
+        );
+        PreventUIRefresh(-1);
+        UpdateArrange();
+        Undo_EndBlock("Hard Reset All Tracks", -1);
     );
-    Undo_EndBlock("Hard Reset All Tracks", -1);
 );
 
 main();

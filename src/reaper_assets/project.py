@@ -8,7 +8,30 @@ from . import markers as M
 from . import routing as R
 from .version import detect_reaper_version
 
-__all__ = ["generate_rpp_project", "generate_rpp_string", "write_settings"]
+__all__ = [
+    "generate_rpp_project",
+    "generate_rpp_string",
+    "parse_time_sig",
+    "write_settings",
+]
+
+
+def parse_time_sig(time_sig):
+    """Parse a time signature given as ``"4/4"`` or a 2-element sequence."""
+    if isinstance(time_sig, str):
+        parts = time_sig.split("/")
+        if len(parts) != 2:
+            raise ValueError(f"invalid time signature {time_sig!r}, expected 'N/D'")
+        num, den = int(parts[0].strip()), int(parts[1].strip())
+    else:
+        try:
+            num, den = time_sig
+        except (TypeError, ValueError) as e:
+            raise ValueError(f"invalid time signature {time_sig!r}") from e
+        num, den = int(num), int(den)
+    if num <= 0 or den <= 0:
+        raise ValueError(f"time signature values must be positive, got {num}/{den}")
+    return (num, den)
 
 
 def _norm_track(spec):
@@ -16,6 +39,28 @@ def _norm_track(spec):
     if isinstance(spec, str):
         return {"name": spec}
     return dict(spec)
+
+
+def _validate_tracks(tracks):
+    """Validate unique track names and balanced folder open/close structure."""
+    seen = set()
+    depth = 0
+    for t in tracks:
+        name = t["name"]
+        if name in seen:
+            raise ValueError(f"duplicate track name: {name!r}")
+        seen.add(name)
+
+        folder = t.get("folder")
+        R.isbus_value(folder)  # validates known folder role
+        if folder == R.FOLDER_PARENT:
+            depth += 1
+        elif folder == R.FOLDER_END:
+            depth -= 1
+            if depth < 0:
+                raise ValueError(f"unmatched folder end on track {name!r}")
+    if depth != 0:
+        raise ValueError(f"unclosed folder track(s) (remaining depth {depth})")
 
 
 def _build_receives(tracks, routes):
@@ -27,18 +72,37 @@ def _build_receives(tracks, routes):
         dst = route["to"]
         if src not in index or dst not in index:
             raise KeyError(f"route references unknown track: {src!r} -> {dst!r}")
+        if src == dst:
+            raise ValueError(f"self-send route not allowed: {src!r} -> {dst!r}")
+        dst_track = tracks[index[dst]]
+        if dst_track.get("folder") == R.FOLDER_PARENT:
+            raise ValueError(
+                f"route cannot target folder parent track {dst!r} (causes REAPER crash)"
+            )
         mode = route.get("mode", 0)
-        volume = route.get("volume", 0)
-        line = R.auxrecv_line(index[src], mode=mode, volume=volume)
+        volume = route.get("volume", 1)
+        name = route.get("name", "")
+        midi_flags = route.get("midi_flags", 0)
+        line = R.auxrecv_line(
+            index[src], mode=mode, volume=volume, name=name, midi_flags=midi_flags
+        )
         receives[index[dst]].append(line)
     return receives
 
 
 def write_settings(b, sample_rate=48000, bpm=120, time_sig=(4, 4), notes=None):
     """Emit canonical project settings + master + envelopes."""
+    ts_num, ts_den = parse_time_sig(time_sig)
+
     b.open("NOTES", 0, 2)
-    for line in notes or []:
-        b.prop(f"|{line}")
+    if isinstance(notes, str):
+        note_lines = notes.splitlines()
+    else:
+        note_lines = []
+        for item in notes or []:
+            note_lines.extend(str(item).splitlines() or [""])
+    for line in note_lines:
+        b.raw(f"|{line}")
     b.close()
 
     b.prop("RIPPLE", 0, 0)
@@ -83,7 +147,7 @@ def write_settings(b, sample_rate=48000, bpm=120, time_sig=(4, 4), notes=None):
     b.prop("ITEMMIX", 1)
     b.prop("DEFPITCHMODE", 589824, 0)
     b.prop("TAKELANE", 1)
-    b.prop("SAMPLERATE", sample_rate, 0, 0)
+    b.prop("SAMPLERATE", sample_rate, 1, 0)
     b.open("RENDER_CFG")
     b.close()
     b.prop("LOCK", 1)
@@ -101,7 +165,7 @@ def write_settings(b, sample_rate=48000, bpm=120, time_sig=(4, 4), notes=None):
     b.close()
 
     b.prop("GLOBAL_AUTO", -1)
-    b.prop("TEMPO", bpm, time_sig[0], time_sig[1], 0)
+    b.prop("TEMPO", bpm, ts_num, ts_den, 0)
     b.prop("PLAYRATE", 1, 0, 0.25, 4)
     b.prop("SELECTION", 0, 0)
     b.prop("SELECTION2", 0, 0)
@@ -118,19 +182,22 @@ def generate_rpp_string(spec):
     """Assemble a full RPP document string from a project spec dict.
 
     spec keys (all optional unless noted):
-      sample_rate, bpm, time_sig, notes, version,
-      tracks (list of name-or-dict; dict keys: name, color, folder, fx),
-      routes (list of {from, to, mode?, volume?}),
+      sample_rate, bpm, time_sig, notes, version, timestamp,
+      tracks (list of name-or-dict; dict keys: name, color, folder, fx,
+              guid, mainsends, mute, fx_enabled),
+      routes (list of {from, to, mode?, volume?, name?, midi_flags?}),
       markers (list of {pos, name, color?}),
       regions (list of {start, end, name, color?})
     """
     tracks = [_norm_track(t) for t in spec.get("tracks", [])]
+    _validate_tracks(tracks)
     routes = spec.get("routes", [])
     receives = _build_receives(tracks, routes)
 
     b = B.ReaperProjectBuilder()
     version = spec.get("version") or detect_reaper_version()
-    B.project_header(b, version, timestamp=spec.get("timestamp") or int(time.time()))
+    ts = spec.get("timestamp")
+    B.project_header(b, version, timestamp=int(time.time()) if ts is None else ts)
 
     write_settings(
         b,
@@ -148,18 +215,23 @@ def generate_rpp_string(spec):
             folder=t.get("folder"),
             receives=receives.get(i),
             fx=t.get("fx") or [],
+            track_guid=t.get("guid"),
             mainsends=t.get("mainsends", 1),
+            mute=t.get("mute", False),
+            fx_enabled=t.get("fx_enabled", True),
         )
 
-    idx = 1
-    for m in spec.get("markers", []):
-        M.write_marker(b, idx, m["pos"], m["name"], color=m.get("color", 255))
-        idx += 1
-    for r in spec.get("regions", []):
-        M.write_region(
-            b, idx, r["start"], r["end"], r["name"], color=r.get("color", 255)
-        )
-        idx += 1
+    for idx, m in enumerate(spec.get("markers", []), start=1):
+        color = m.get("color", 0)
+        if isinstance(color, (tuple, list)):
+            color = B.color_to_native(*color)
+        M.write_marker(b, idx, m["pos"], m["name"], color=color)
+
+    for idx, r in enumerate(spec.get("regions", []), start=1):
+        color = r.get("color", 0)
+        if isinstance(color, (tuple, list)):
+            color = B.color_to_native(*color)
+        M.write_region(b, idx, r["start"], r["end"], r["name"], color=color)
 
     b.open("EXTENSIONS")
     b.close()

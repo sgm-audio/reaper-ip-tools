@@ -78,9 +78,33 @@ def test_plugin_resolver(tmp_path):
 def test_plugin_resolver_empty_without_map():
     r = FX.PluginResolver("/nonexistent/map.json")
     assert r.available() == []
+    assert r.loaded is False
+    assert r.load_error is not None
+
+
+def test_plugin_resolver_strict_and_non_dict(tmp_path):
+    with pytest.raises(FileNotFoundError):
+        FX.PluginResolver("/nonexistent/map.json", strict=True)
+
+    bad_json = tmp_path / "bad.json"
+    bad_json.write_text("{not valid json")
+    r_non_strict = FX.PluginResolver(str(bad_json))
+    assert r_non_strict.load_error is not None
+    with pytest.raises(ValueError):
+        FX.PluginResolver(str(bad_json), strict=True)
+
+    list_json = tmp_path / "list.json"
+    list_json.write_text("[1, 2, 3]")
+    with pytest.raises(ValueError):
+        FX.PluginResolver(str(list_json))
 
 
 def test_vst_node_fxid_wak_placement_matches_reaper():
+    import re
+
+    guid_re = re.compile(
+        r"^FXID \{[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}\}$"
+    )
     # In REAPER-saved projects (e.g. tests/fixtures/voice_over.rpp), each
     # <VST> node is closed with '>', and FXID/WAK follow at FXCHAIN level --
     # they are not nested inside the <VST> node. This emitter must match that.
@@ -95,8 +119,8 @@ def test_vst_node_fxid_wak_placement_matches_reaper():
     for i in vst_indices():
         # line after the state block is the VST closer at FXCHAIN indent
         close = next(j for j in range(i, len(lines)) if lines[j].strip() == ">")
-        # FXID then WAK immediately follow the closer, at FXCHAIN level
-        assert lines[close + 1].strip().startswith("FXID {"), lines[close:]
+        # FXID (hyphenated GUID) then WAK immediately follow the closer, at FXCHAIN level
+        assert guid_re.match(lines[close + 1].strip()), lines[close:]
         assert lines[close + 2].strip() == "WAK 0 0", lines[close:]
         # the closer must come after at least one state line
         assert close > i + 1
@@ -110,3 +134,16 @@ def test_vst_node_line_matches_reaper_grammar():
     assert "VST: ReaEQ (Cockos)" in vst
     assert "reaeq.dll" in vst
     assert "1919247729<56535472656571726561657100000000>" in vst
+
+
+def test_vst_node_quotes_special_display_and_preset():
+    b = B.ReaperProjectBuilder()
+    desc = dict(
+        FX.STOCK_PLUGINS["ReaEQ"],
+        display='VST: "Custom" EQ (Cockos)',
+        preset='My "Vocal" Preset',
+    )
+    FX.write_vst_node(b, desc)
+    header = b.build().splitlines()[0]
+    assert '\'VST: "Custom" EQ (Cockos)\'' in header
+    assert '\'My "Vocal" Preset\'' in header

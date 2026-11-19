@@ -6,6 +6,8 @@ ISBUS encoding: a folder is ``"parent"`` + children, with the *last* child
 marked ``"end"`` to close the folder.
 """
 
+import copy
+
 from . import routing as R
 
 __all__ = ["TEMPLATES", "get_template", "list_templates"]
@@ -24,6 +26,8 @@ _CYAN = (0, 170, 255)
 def _folder(children, parent_extra=None):
     """Build a folder track group. ``children`` is a list of track dicts; the
     last child is automatically marked as the folder end."""
+    if not children:
+        raise ValueError("_folder() requires at least one child track")
     base = dict(parent_extra or {})
     tracks = [dict(base, folder=R.FOLDER_PARENT)]
     for i, child in enumerate(children):
@@ -153,7 +157,7 @@ TEMPLATES = {
                 "color": _WHITE,
                 "fx": ["ReaEQ", "ReaComp", "ReaLimit"],
             },
-            {"name": "REFERENCE", "color": _YELLOW, "mainsends": 0},
+            {"name": "REFERENCE", "color": _YELLOW, "mute": True, "mainsends": 1},
         ],
         "routes": [],
         "markers": [{"pos": 0.0, "name": "Track Start"}],
@@ -233,7 +237,7 @@ TEMPLATES = {
 def get_template(name):
     if name not in TEMPLATES:
         raise KeyError(f"Unknown template {name!r}. Available: {list_templates()}")
-    return TEMPLATES[name]
+    return copy.deepcopy(TEMPLATES[name])
 
 
 def list_templates():

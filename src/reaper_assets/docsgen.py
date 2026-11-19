@@ -9,6 +9,7 @@ import io
 import os
 
 from . import routing as R
+from .project import parse_time_sig
 
 __all__ = ["color_to_hex", "generate_docs"]
 
@@ -24,30 +25,38 @@ def _title(name):
     return name.replace("_", " ").title()
 
 
+def _norm_track(track):
+    return {"name": track} if isinstance(track, str) else track
+
+
+def _md_cell(value):
+    s = "" if value is None else str(value)
+    return s.replace("|", r"\|").replace("\r\n", " ").replace("\n", " ").replace("\r", " ")
+
+
 def _session_map(spec, name):
+    ts_num, ts_den = parse_time_sig(spec.get("time_sig", (4, 4)))
     lines = []
     lines.append(f"# {_title(name)} Session Map")
     lines.append("")
     lines.append(f"> {spec.get('description', '')}")
     lines.append("")
     lines.append(f"- Sample rate: {spec.get('sample_rate', 48000)} Hz")
-    lines.append(
-        f"- Tempo: {spec.get('bpm', 120)} BPM, "
-        f"{spec.get('time_sig', (4, 4))[0]}/{spec.get('time_sig', (4, 4))[1]}"
-    )
+    lines.append(f"- Tempo: {spec.get('bpm', 120)} BPM, {ts_num}/{ts_den}")
     lines.append("")
     lines.append("## Track layout")
     lines.append("")
     lines.append("| # | Track | Color | Folder | FX |")
     lines.append("|---|-------|-------|--------|----|")
-    for i, t in enumerate(spec.get("tracks", []), start=1):
-        fx = ", ".join(t.get("fx", [])) or "—"
+    for i, raw_t in enumerate(spec.get("tracks", []), start=1):
+        t = _norm_track(raw_t)
+        fx = ", ".join(t.get("fx") or []) or "—"
         folder = {"parent": "folder", "end": "folder (end)", "child": "child"}.get(
             t.get("folder"), ""
         )
         lines.append(
-            f"| {i} | {t['name']} | {color_to_hex(t.get('color')) or 'default'} "
-            f"| {folder or '—'} | {fx} |"
+            f"| {i} | {_md_cell(t['name'])} | {color_to_hex(t.get('color')) or 'default'} "
+            f"| {folder or '—'} | {_md_cell(fx)} |"
         )
     lines.append("")
     return "\n".join(lines) + "\n"
@@ -65,7 +74,9 @@ def _routing_matrix(spec):
     lines.append("| Source | Destination | Mode |")
     lines.append("|--------|-------------|------|")
     for r in routes:
-        lines.append(f"| {r['from']} | {r['to']} | {r.get('mode', 0)} |")
+        lines.append(
+            f"| {_md_cell(r['from'])} | {_md_cell(r['to'])} | {r.get('mode', 0)} |"
+        )
     lines.append("")
     lines.append(
         "> Folder children route to their parent implicitly; only "
@@ -89,20 +100,29 @@ def _track_layout_csv(spec):
             "routing_note",
         ]
     )
-    for i, t in enumerate(spec.get("tracks", []), start=1):
+    routes = spec.get("routes", [])
+    route_dests = {r["to"] for r in routes}
+    depth = 0
+    for i, raw_t in enumerate(spec.get("tracks", []), start=1):
+        t = _norm_track(raw_t)
         folder = t.get("folder")
-        folder_level = 0
+        folder_level = depth
         if folder == R.FOLDER_PARENT:
-            folder_level = 1
+            depth += 1
         elif folder == R.FOLDER_END:
-            folder_level = 0
-        fx = ",".join(t.get("fx", []))
-        note = _route_note(t["name"], spec.get("routes", []), folder)
+            depth = max(0, depth - 1)
+        fx = ",".join(t.get("fx") or [])
+        track_type = (
+            "bus"
+            if (folder == R.FOLDER_PARENT or t["name"] in route_dests)
+            else "audio"
+        )
+        note = _route_note(t["name"], routes, folder)
         w.writerow(
             [
                 i,
                 t["name"],
-                "bus" if t.get("mainsends") == 0 else "audio",
+                track_type,
                 folder_level,
                 color_to_hex(t.get("color")),
                 fx,

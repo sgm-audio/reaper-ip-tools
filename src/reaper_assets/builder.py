@@ -15,16 +15,39 @@ import uuid
 __all__ = [
     "ReaperProjectBuilder",
     "color_to_native",
+    "rpp_quote",
     "write_envelope",
     "write_master",
     "write_track",
 ]
 
 
+def rpp_quote(value, prefer='"'):
+    """Safely quote a string token for REAPER RPP output.
+
+    Rejects embedded CR/LF newlines (which would break RPP line framing) and
+    selects ``"..."``, ``'...'``, or `` `...` `` delimiters to avoid unescaped
+    delimiter collisions.
+    """
+    s = "" if value is None else str(value)
+    if "\n" in s or "\r" in s:
+        raise ValueError(f"RPP string values cannot contain newlines: {s!r}")
+    delimiters = ("'", '"', "`") if prefer == "'" else ('"', "'", "`")
+    for q in delimiters:
+        if q not in s:
+            return f"{q}{s}{q}"
+    # All three quote characters present: fall back to backticks and replace
+    # embedded backticks with single quotes so the token stays valid RPP.
+    return f"`{s.replace('`', chr(39))}`"
+
+
 def color_to_native(r, g, b):
     """REAPER packed track color: ``r | (g<<8) | (b<<16)``, plus the
     ``0x1000000`` 'custom color' flag REAPER sets on non-default colors."""
-    return (r | (g << 8) | (b << 16)) | 0x1000000
+    ri, gi, bi = int(r), int(g), int(b)
+    if not (0 <= ri <= 255 and 0 <= gi <= 255 and 0 <= bi <= 255):
+        raise ValueError(f"RGB channels must be in 0..255, got ({r!r}, {g!r}, {b!r})")
+    return (ri & 0xFF) | ((gi & 0xFF) << 8) | ((bi & 0xFF) << 16) | 0x1000000
 
 
 class ReaperProjectBuilder:
@@ -77,7 +100,7 @@ def write_master(b):
 def write_envelope(b, tag, active=0, vis=(1, 0, 1), defshape=0):
     """Canonical ``<MASTERPLAYSPEEDENV>`` / ``<TEMPOENVEX>`` envelope node."""
     b.open(tag)
-    b.prop("EGUID", f"{{{uuid.uuid4().hex.upper()}}}")
+    b.prop("EGUID", f"{{{str(uuid.uuid4()).upper()}}}")
     b.prop("ACT", active, -1)
     b.prop("VIS", *vis)
     b.prop("LANEHEIGHT", 0, 0)
@@ -99,6 +122,8 @@ def write_track(
     fx=None,
     track_guid=None,
     mainsends=1,
+    mute=False,
+    fx_enabled=True,
 ):
     """Emit a canonical ``<TRACK {GUID}>`` node.
 
@@ -117,23 +142,29 @@ def write_track(
     fx : list of str or None
         Stock plugin names to attach via ``reaper_assets.fx.write_fx_chain``.
     track_guid : str or None
-        Explicit GUID; a fresh UUID is generated when omitted.
+        Explicit GUID (with or without surrounding braces); a fresh UUID is
+        generated when omitted.
     mainsends : int
         ``MAINSEND`` flag — 0 for bus tracks that route via explicit sends
         instead of the hardware master.
+    mute : bool
+        When True, emit ``MUTESOLO 1 0 0`` (muted by default).
+    fx_enabled : bool
+        Track FX chain enable flag (``FX 1`` enabled, ``FX 0`` bypassed).
     """
     from .routing import isbus_value
 
-    guid = track_guid or str(uuid.uuid4()).upper()
+    raw_guid = str(track_guid).strip("{}") if track_guid is not None else ""
+    guid = raw_guid or str(uuid.uuid4()).upper()
 
     b.open("TRACK", f"{{{guid}}}")
-    b.prop("NAME", f'"{name}"')
+    b.prop("NAME", rpp_quote(name))
     b.prop("PEAKCOL", _default_peakcol(color))
     b.prop("BEAT", -1)
     b.prop("AUTOMODE", 0)
     b.prop("PANLAWFLAGS", 3)
     b.prop("VOLPAN", 1, 0, -1, -1, 1)
-    b.prop("MUTESOLO", 0, 0, 0)
+    b.prop("MUTESOLO", 1 if mute else 0, 0, 0)
     b.prop("IPHASE", 0)
     b.prop("PLAYOFFS", 0, 1)
     b.prop("ISBUS", *isbus_value(folder))
@@ -146,7 +177,7 @@ def write_track(
     b.prop("TRACKHEIGHT", 0, 0, 0, 0, 0, 0, 0)
     b.prop("INQ", 0, 0, 0, 0.5, 100, 0, 0, 100)
     b.prop("NCHAN", 2)
-    b.prop("FX", len(fx) if fx else 0)
+    b.prop("FX", 1 if fx_enabled else 0)
     b.prop("TRACKID", f"{{{guid}}}")
     b.prop("PERF", 0)
 
@@ -173,6 +204,5 @@ def write_track(
 
 def project_header(b, version_string, timestamp=None):
     """Emit the ``<REAPER_PROJECT 0.1 "X.YY/win64" <ts>`` opening line."""
-    b.open(
-        "REAPER_PROJECT", "0.1", f'"{version_string}"', timestamp or int(time.time())
-    )
+    ts = int(time.time()) if timestamp is None else timestamp
+    b.open("REAPER_PROJECT", "0.1", rpp_quote(version_string), ts)

@@ -84,13 +84,13 @@ All conformant:
 | Settings | `TIMEMODE 1 5 -1 30 0 0 -1`, `GRID 3199 …`, `RENDER_RANGE 1 0 0 18 1000`, `SMPTESYNC …` | matches fixtures | OK |
 | Track field order | NAME, PEAKCOL, BEAT, AUTOMODE, PANLAWFLAGS, VOLPAN … MAINSEND, [FXCHAIN] | matches fixtures | OK |
 | Track GUID | `<TRACK {GUID} … TRACKID {GUID}` identical | matches fixtures | OK |
-| Folder encoding | parent `ISBUS 1 1`, child `ISBUB 0 0`, end `ISBUS 2 -1` | matches `broadcast_ready.rpp` | OK |
-| Sends | `AUXRECV <src> 0 <mode> 0 0 0 0 0 0 -1:U <vol> -1 ''` on receiver | matches fixtures | OK |
+| Folder encoding | parent `ISBUS 1 1`, child `ISBUS 0 0`, end `ISBUS 2 -1` | matches `broadcast_ready.rpp` | OK |
+| Sends | `AUXRECV <src> <mode> <vol_linear> 0 0 0 0 0 0 -1:U <midi_flags> -1 <name>` (default vol=1) | matches REAPER 7.x spec | OK |
 | VST node | `<VST "VST: … (Cockos)" dll 0 "" uid<hex> ""` + base64 state | matches fixtures verbatim | OK |
 | Stock plugin UIDs | ReaEQ 1919247729, ReaComp 1919247213, ReaGate 1919248244, ReaLimit 1919708532 | match fixture UIDs exactly | OK |
-| FXID / WAK | emitted at FXCHAIN level immediately after each `>` VST closer | matches fixtures verbatim | OK |
-| MARKER / REGION | `MARKER <idx> <pos> "<name>" <id> <color> 1 R {GUID} 0 2 [end]` | matches fixtures verbatim | OK |
-| Marker indexing | single increasing counter across markers + regions | matches REAPER convention | OK |
+| FXID / WAK | emitted at FXCHAIN level immediately after each `>` VST closer (hyphenated GUID) | matches fixtures verbatim | OK |
+| MARKER / REGION | Point: `MARKER <idx> <pos> <name> 0 <color> 1 R {<GUID>} 0`; Region: two lines (`flags=1` start + `MARKER <idx> <end> "" 1` end) | matches REAPER 7.x spec | OK |
+| Marker indexing | separate 1-based counters for markers (`1..N`) and regions (`1..M`) | matches REAPER convention | OK |
 
 One deliberate conformance fix: `project.py` wrote `<METRONOME 6 0>`; every
 ground-truth project writes `<METRONOME 6 2>`. Changed to `6 2` (node open

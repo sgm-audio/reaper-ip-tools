@@ -88,19 +88,25 @@ def stock_plugin(name):
 
 def write_vst_node(b, desc):
     """Emit a single ``<VST ...>`` node from a stock plugin descriptor."""
+    from .builder import rpp_quote
+
+    dll = desc["dll"]
+    if any(ch in dll for ch in (' ', '"', "'", "`", "\n", "\r")):
+        dll = rpp_quote(dll)
+
     b.open(
         "VST",
-        f'"{desc["display"]}"',
-        desc["dll"],
+        rpp_quote(desc["display"]),
+        dll,
         0,
-        f'"{desc.get("preset", "")}"',
+        rpp_quote(desc.get("preset", "")),
         f"{desc['uid']}<{desc['hex']}>",
         '""',
     )
     for line in desc["state"]:
         b.raw(line)
     b.close()
-    b.prop("FXID", f"{{{uuid.uuid4().hex.upper()}}}")
+    b.prop("FXID", f"{{{str(uuid.uuid4()).upper()}}}")
     b.prop("WAK", 0, 0)
 
 
@@ -135,15 +141,35 @@ class PluginResolver:
     emitted with full, verified state.
     """
 
-    def __init__(self, map_path=None):
+    def __init__(self, map_path=None, strict=False):
         self.map_path = map_path
         self.map = {}
-        if map_path and os.path.exists(map_path):
-            try:
-                with open(map_path, "r", encoding="utf-8") as f:
-                    self.map = json.load(f)
-            except (OSError, json.JSONDecodeError):
-                self.map = {}
+        self.loaded = False
+        self.load_error = None
+        if not map_path:
+            return
+        if not os.path.exists(map_path):
+            err = FileNotFoundError(f"Plugin map not found: {map_path}")
+            self.load_error = str(err)
+            if strict:
+                raise err
+            return
+        try:
+            with open(map_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+        except (OSError, UnicodeDecodeError, json.JSONDecodeError) as e:
+            self.load_error = str(e)
+            if strict:
+                raise
+            return
+        if not isinstance(data, dict):
+            err = ValueError(
+                f"Plugin map JSON root must be an object, got {type(data).__name__}"
+            )
+            self.load_error = str(err)
+            raise err
+        self.map = data
+        self.loaded = True
 
     def resolve(self, name):
         """Return ``{"uid", "filename", "type"}`` for ``name``, or None."""

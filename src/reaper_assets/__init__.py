@@ -17,6 +17,7 @@ Public API surface:
 from .builder import (
     ReaperProjectBuilder,
     color_to_native,
+    rpp_quote,
     write_envelope,
     write_master,
     write_track,
@@ -50,6 +51,7 @@ __all__ = [
     "isbus_value",
     "list_templates",
     "merge_tracks",
+    "rpp_quote",
     "stock_plugin",
     "validate_rpp",
     "validate_rpp_file",

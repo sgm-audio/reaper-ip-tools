@@ -6,7 +6,8 @@ Ground truth (REAPER 7.x):
   *receiver* B, referencing A by 0-based track index, placed between
   ``PERF 0`` and ``MIDIOUT -1``::
 
-      AUXRECV 7 0 0 0 0 0 0 0 0 -1:U 0 -1 ''
+      AUXRECV <src_idx> <mode> <vol_linear> <pan> <mute> <mono> <phase> <src_ch> <dst_ch> <panlaw> <midi_flags> <automode> <name>
+      AUXRECV 7 0 1 0 0 0 0 0 0 -1:U 0 -1 ''
 
 - Folder hierarchy is encoded on each track via ``ISBUS``::
 
@@ -15,6 +16,8 @@ Ground truth (REAPER 7.x):
       last child    ISBUS 2 -1   (marks the end of the folder)
 
 """
+
+from .builder import rpp_quote
 
 FOLDER_PARENT = "parent"
 FOLDER_CHILD = "child"
@@ -30,19 +33,30 @@ __all__ = [
 ]
 
 
-def auxrecv_line(src_index, mode=0, volume=0, name=""):
+def auxrecv_line(src_index, mode=0, volume=1, name="", midi_flags=0):
     """Return a canonical AUXRECV line referencing ``src_index``.
 
-    ``mode`` follows REAPER send modes (0 = post-fader, the default).
-    ``volume`` is 0 dB at 0. ``name`` is the optional send label.
+    REAPER column order:
+    ``AUXRECV <src_idx> <mode> <vol_linear> <pan> <mute> <mono> <phase>
+    <src_ch> <dst_ch> <panlaw> <midi_flags> <automode> <name>``
+
+    ``mode`` follows REAPER send modes (0 = post-fader, 1 = pre-FX,
+    3 = pre-fader/post-FX).
+    ``volume`` is linear gain (``1`` = 0 dB unity gain, ``0`` = -inf dB).
+    ``midi_flags`` controls MIDI send routing (0 = all channels).
+    ``name`` is the optional send label.
     """
-    name_tok = f"'{name}'"
-    return f"AUXRECV {src_index} 0 {mode} 0 0 0 0 0 0 -1:U {volume} -1 {name_tok}"
+    name_tok = rpp_quote(name, prefer="'")
+    return f"AUXRECV {src_index} {mode} {volume} 0 0 0 0 0 0 -1:U {midi_flags} -1 {name_tok}"
 
 
-def write_auxrecv(b, src_index, mode=0, volume=0, name=""):
+def write_auxrecv(b, src_index, mode=0, volume=1, name="", midi_flags=0):
     """Emit an AUXRECV line onto builder ``b``."""
-    b.raw(auxrecv_line(src_index, mode=mode, volume=volume, name=name))
+    b.raw(
+        auxrecv_line(
+            src_index, mode=mode, volume=volume, name=name, midi_flags=midi_flags
+        )
+    )
 
 
 def isbus_value(folder=None):
@@ -50,8 +64,13 @@ def isbus_value(folder=None):
 
     Returns a ``(depth, flag)`` tuple suitable for ``builder.prop("ISBUS", *...)``.
     """
+    if folder is None or folder == FOLDER_CHILD:
+        return (0, 0)
     if folder == FOLDER_PARENT:
         return (1, 1)
     if folder == FOLDER_END:
         return (2, -1)
-    return (0, 0)
+    raise ValueError(
+        f"Unknown folder role {folder!r}. Expected None, "
+        f"{FOLDER_PARENT!r}, {FOLDER_CHILD!r}, or {FOLDER_END!r}"
+    )
